@@ -1,9 +1,9 @@
 {
   "scripts": {
-  "dev": "node app.js"
+    "dev": "node app.js"
   },
   "dependencies": {
+    "mysql2": "^3.12.0",
     "socket.io": "^4.8.1"
   }
-  
 }
