@@ -1,7 +1,12 @@
-const http = require('http');
-const mysql = require('mysql2/promise');  // Cambiamos a mysql2
+const express = require('express');
+const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+const authRoutes = require('./routes/authRoutes');
+
+const app = express();
+app.use(express.json());
+app.use('/api/auth', authRoutes);
 
 // Crear pool de conexiones para MariaDB
 const pool = mysql.createPool({
@@ -44,26 +49,20 @@ const initDB = async () => {
 
 initDB();
 
-const server = http.createServer(async (req, res) => {
-  if (req.url === '/ping' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('pong');
-  } else if (req.url === '/test-db' && req.method === 'GET') {
-    try {
-      const [rows] = await pool.query('SELECT NOW()');
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ message: 'DB Connected!', time: rows[0]['NOW()'] }));
-    } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'DB Connection Failed', details: err.message }));
-    }
-  } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not Found');
+app.get('/ping', (req, res) => {
+  res.send('pong');
+});
+
+app.get('/test-db', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT NOW()');
+    res.json({ message: 'DB Connected!', time: rows[0]['NOW()'] });
+  } catch (err) {
+    res.status(500).json({ error: 'DB Connection Failed', details: err.message });
   }
 });
 
 const PORT = 4000;
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
 });
