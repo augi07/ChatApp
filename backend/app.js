@@ -5,20 +5,40 @@ const path = require('path');
 
 // Crear pool de conexiones para MariaDB
 const pool = mysql.createPool({
-  host: 'db',                   // Nombre del servicio en Docker
-  user: 'chatuser',              // Usuario configurado en Docker
-  password: 'chatpassword',      // Contraseña configurada en Docker
-  database: 'chatdb'             // Base de datos creada automáticamente
+  host: 'db',
+  user: 'chatuser',
+  password: 'chatpassword',
+  database: 'chatdb'
 });
 
-// Inicializar la base de datos ejecutando schema.sql
+const waitForDB = async () => {
+  let connected = false;
+  while (!connected) {
+    try {
+      await pool.query('SELECT 1');
+      console.log('✅ Database connected!');
+      connected = true;
+    } catch (err) {
+      console.log('⏳ Waiting for database...');
+      await new Promise(res => setTimeout(res, 2000));
+    }
+  }
+};
+
 const initDB = async () => {
+  await waitForDB();  // Esperar a que la base de datos esté lista
+
   try {
     const schema = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql')).toString();
-    await pool.query(schema);
-    console.log('Database initialized');
+    const statements = schema.split(';').filter(stmt => stmt.trim());
+
+    for (let statement of statements) {
+      await pool.query(statement); // Ejecuta cada sentencia individualmente
+    }
+
+    console.log('✅ Database initialized successfully!');
   } catch (err) {
-    console.error('DB init error:', err);
+    console.error('❌ DB init error:', err);
   }
 };
 
