@@ -4,11 +4,11 @@ WORKDIR /app
 
 RUN npm install -g pnpm
 
-# Copia los archivos desde la raíz de ./frontend
+# Copy the files from the root of ./frontend
 COPY package.json ./
 RUN pnpm install
 
-# Copia todo el frontend
+# Copy the entire frontend
 COPY . .
 
 

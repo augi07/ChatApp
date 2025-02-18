@@ -12,7 +12,7 @@ app.use(cors());
 
 app.use('/api/auth', authRoutes);
 
-// Crear pool de conexiones para MariaDB
+// Create connection pool for MariaDB
 const pool = mysql.createPool({
   host: 'db',
   user: 'chatuser',
@@ -35,14 +35,14 @@ const waitForDB = async () => {
 };
 
 const initDB = async () => {
-  await waitForDB();  // Esperar a que la base de datos esté lista
+  await waitForDB();  // Waiting for the database to be ready
 
   try {
     const schema = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql')).toString();
     const statements = schema.split(';').filter(stmt => stmt.trim());
 
     for (let statement of statements) {
-      await pool.query(statement); // Ejecuta cada sentencia individualmente
+      await pool.query(statement); // Executes each statement individually
     }
 
     console.log('✅ Database initialized successfully!');
