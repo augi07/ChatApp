@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -13,6 +15,7 @@ export default function Dashboard() {
         const token = localStorage.getItem("token"); // Get token from login
         if (!token) {
           console.error("No token found, redirecting to login...");
+          router.push("/"); // Redirect to main login page (localhost:3000)
           return;
         }
 
@@ -36,10 +39,16 @@ export default function Dashboard() {
     fetchUser();
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem("token"); // Remove the authentication token
+    localStorage.removeItem("user");  // Remove user data
+    router.push("/"); // Redirect to the main login page (localhost:3000)
+  };
+
   return (
-    <div className="h-screen w-screen bg-gray-900 flex items-start justify-start p-6">
+    <div className="h-screen w-screen bg-gray-900 flex items-start justify-between p-6">
       {/* Profile Box in Top-Left */}
-      <div className="bg-gray-800 text-white p-4 rounded-lg shadow-md w-64">
+      <div className="bg-gray-800 text-white p-4 rounded-lg shadow-md w-64 self-start">
         <div className="flex flex-col items-center space-y-2">
           {/* Name Box */}
           <div className="bg-gray-700 text-lg font-bold px-4 py-2 rounded-md w-full text-center">
@@ -54,6 +63,11 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* Logout Button (Top Right) */}
+      <button onClick={handleLogout} className="text-white hover:text-red-500 transition self-start">
+        <FontAwesomeIcon icon={faRightFromBracket} size="2x" />
+      </button>
     </div>
   );
 }
