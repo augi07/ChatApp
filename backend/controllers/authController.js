@@ -32,3 +32,44 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: 'Error logging in' });
   }
 };
+
+// Update user
+exports.updateUser = async (req, res) => {
+  const { name, email, password } = req.body;
+  const userId = req.user.id;
+
+  try {
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    let query = "UPDATE users SET name = ?, email = ? WHERE id = ?";
+    let values = [name, email, userId];
+
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      query = "UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?";
+      values = [name, email, hashedPassword, userId];
+    }
+
+    await pool.query(query, values);
+    res.status(200).json({ message: "User updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating user" });
+  }
+};
+
+exports.getUser = async (req, res) => {
+  try {
+    const userId = req.user.id; // Assuming you have middleware to decode the token
+    const [users] = await pool.query('SELECT id, name, email FROM users WHERE id = ?', [userId]);
+    
+    if (users.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(users[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching user data" });
+  }
+};
