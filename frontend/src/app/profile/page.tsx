@@ -1,10 +1,18 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 
 export default function EditProfile() {
   const router = useRouter();
   const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
+
+  const [originalData, setOriginalData] = useState({
     name: "",
     email: "",
     password: "",
@@ -30,7 +38,8 @@ export default function EditProfile() {
         if (!res.ok) throw new Error("Failed to fetch user");
 
         const data = await res.json();
-        setForm({ name: data.name, email: data.email, password: "" }); // Pre-fill form
+        setForm({ name: data.name, email: data.email, password: "" });
+        setOriginalData({ name: data.name, email: data.email, password: "" }); // Store initial data
       } catch (error) {
         console.error("Error fetching user:", error);
       }
@@ -45,6 +54,17 @@ export default function EditProfile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if user made changes
+    if (
+      form.name === originalData.name &&
+      form.email === originalData.email &&
+      form.password === ""
+    ) {
+      alert("No changes were made!");
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -75,7 +95,15 @@ export default function EditProfile() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
-      <div className="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-lg">
+      <div className="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-lg relative">
+        {/* Back Button */}
+        <button
+          className="absolute top-4 left-4 text-gray-300 hover:text-white"
+          onClick={() => router.push("/dashboard")}
+        >
+          <FontAwesomeIcon icon={faArrowLeft} size="lg" />
+        </button>
+
         <h2 className="text-2xl font-bold text-center">Edit Profile</h2>
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <input
