@@ -44,7 +44,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-900">
       <div className="max-w-lg w-full bg-gray-800 rounded-lg shadow-xl overflow-hidden">
         <div className="p-8">
-          <h2 className="text-center text-3xl font-extrabold text-white">Welcome Back</h2>
+          <h2 className="text-center text-3xl font-extrabold text-white">Welcome Back to Messinger</h2>
           <p className="mt-4 text-center text-gray-400">Sign in to continue</p>
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div>
@@ -70,15 +70,6 @@ export default function LoginPage() {
               />
             </div>
             <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input type="checkbox" id="remember-me" className="h-4 w-4 text-indigo-500 border-gray-600 rounded" />
-                <label htmlFor="remember-me" className="ml-2 text-sm text-gray-400">
-                  Remember me
-                </label>
-              </div>
-              <a href="#" className="text-sm text-indigo-500 hover:text-indigo-400">
-                Forgot your password?
-              </a>
             </div>
             <button type="submit" className="w-full py-3 bg-indigo-500 text-white rounded-md hover:bg-indigo-600">
               Sign In
