@@ -1,18 +1,27 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
+const http = require('http');
+const cors = require('cors');
+const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
+
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 app.use(express.json());
-
-const cors = require('cors');
 app.use(cors());
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use('/api/auth', authRoutes);
 
-// Create connection pool for MariaDB
 const pool = mysql.createPool({
   host: 'db',
   user: 'chatuser',
@@ -20,6 +29,7 @@ const pool = mysql.createPool({
   database: 'chatdb'
 });
 
+// Wait for the Database to be ready
 const waitForDB = async () => {
   let connected = false;
   while (!connected) {
@@ -34,17 +44,15 @@ const waitForDB = async () => {
   }
 };
 
+// Initialize Database (Runs `schema.sql`)
 const initDB = async () => {
-  await waitForDB();  // Waiting for the database to be ready
-
+  await waitForDB();
   try {
     const schema = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql')).toString();
     const statements = schema.split(';').filter(stmt => stmt.trim());
-
     for (let statement of statements) {
-      await pool.query(statement); // Executes each statement individually
+      await pool.query(statement);
     }
-
     console.log('✅ Database initialized successfully!');
   } catch (err) {
     console.error('❌ DB init error:', err);
@@ -53,20 +61,38 @@ const initDB = async () => {
 
 initDB();
 
-app.get('/ping', (req, res) => {
-  res.send('pong');
-});
+// Real-time Chat with Socket.io
+io.on('connection', (socket) => {
+  console.log('🟢 User connected:', socket.id);
 
-app.get('/test-db', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT NOW()');
-    res.json({ message: 'DB Connected!', time: rows[0]['NOW()'] });
-  } catch (err) {
-    res.status(500).json({ error: 'DB Connection Failed', details: err.message });
-  }
+  // Load Chat History
+  socket.on('loadMessages', async () => {
+    try {
+      const [messages] = await pool.query('SELECT * FROM messages ORDER BY created_at ASC');
+      socket.emit('messagesLoaded', messages);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  });
+
+  // Handle New Messages
+  socket.on('sendMessage', async ({ user_id, content }) => {
+    try {
+      const [result] = await pool.query('INSERT INTO messages (user_id, content) VALUES (?, ?)', [user_id, content]);
+      const newMessage = { id: result.insertId, user_id, content, created_at: new Date() };
+
+      io.emit('newMessage', newMessage); // Broadcast message to all clients
+    } catch (error) {
+      console.error('Error saving message:', error);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('🔴 User disconnected:', socket.id);
+  });
 });
 
 const PORT = 4000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
 });
