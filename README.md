@@ -1,4 +1,4 @@
-# Hello this is my Chat-App
+# Hello this is my Chat-App Messinger
 
 To setup this Project:
 
