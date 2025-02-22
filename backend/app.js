@@ -62,33 +62,44 @@ const initDB = async () => {
 initDB();
 
 // Real-time Chat with Socket.io
-io.on('connection', (socket) => {
-  console.log('🟢 User connected:', socket.id);
+const activeUsers = new Map(); // Speichert verbundene Benutzer
 
-  // Load Chat History
-  socket.on('loadMessages', async () => {
+io.on("connection", (socket) => {
+  console.log("🟢 User connected:", socket.id);
+
+  // Benutzer speichert sich mit Namen
+  socket.on("userConnected", (user) => {
+    activeUsers.set(socket.id, user.name);
+    io.emit("activeUsers", Array.from(activeUsers.values())); // Senden aktive Benutzer an alle
+  });
+
+  // Lade Chatverlauf
+  socket.on("loadMessages", async () => {
     try {
-      const [messages] = await pool.query('SELECT * FROM messages ORDER BY created_at ASC');
-      socket.emit('messagesLoaded', messages);
+      const [messages] = await pool.query("SELECT * FROM messages ORDER BY created_at ASC");
+      socket.emit("messagesLoaded", messages);
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error("Error loading messages:", error);
     }
   });
 
-  // Handle New Messages
-  socket.on('sendMessage', async ({ user_id, content }) => {
+  // Nachricht senden
+  socket.on("sendMessage", async ({ user_id, content }) => {
     try {
-      const [result] = await pool.query('INSERT INTO messages (user_id, content) VALUES (?, ?)', [user_id, content]);
+      const [result] = await pool.query("INSERT INTO messages (user_id, content) VALUES (?, ?)", [user_id, content]);
       const newMessage = { id: result.insertId, user_id, content, created_at: new Date() };
 
-      io.emit('newMessage', newMessage); // Broadcast message to all clients
+      io.emit("newMessage", newMessage);
     } catch (error) {
-      console.error('Error saving message:', error);
+      console.error("Error saving message:", error);
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('🔴 User disconnected:', socket.id);
+  // Wenn Benutzer sich trennt
+  socket.on("disconnect", () => {
+    console.log("🔴 User disconnected:", socket.id);
+    activeUsers.delete(socket.id);
+    io.emit("activeUsers", Array.from(activeUsers.values())); // Aktualisiere aktive Benutzer
   });
 });
 

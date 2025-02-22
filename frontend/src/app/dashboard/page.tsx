@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<{ id: number; name: string; email: string } | null>(null);
   const [messages, setMessages] = useState<{ id: number; user_id: number; content: string; created_at: string }[]>([]);
   const [message, setMessage] = useState("");
+  const [activeUsers, setActiveUsers] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,28 +36,37 @@ export default function Dashboard() {
         if (!res.ok) throw new Error("Failed to fetch user");
         const data = await res.json();
         setUser(data);
-        localStorage.setItem("user", JSON.stringify(data)); // Store only this user's data
+        localStorage.setItem("user", JSON.stringify(data));
+
+        // Add user to active list
+        socket.emit("userConnected", data);
       } catch (error) {
         console.error("Error fetching user:", error);
       }
     };
 
     fetchUser();
+
     socket.emit("loadMessages");
 
     socket.on("messagesLoaded", (messages) => {
       setMessages(messages);
-      setTimeout(scrollToBottom, 100); // Ensuring the scroll gets to exact bottom
+      setTimeout(scrollToBottom, 100);
     });
 
     socket.on("newMessage", (newMessage) => {
       setMessages((prevMessages) => [...prevMessages, newMessage]);
-      setTimeout(scrollToBottom, 100); // Ensuring smooth auto-scroll
+      setTimeout(scrollToBottom, 100);
+    });
+
+    socket.on("activeUsers", (users) => {
+      setActiveUsers(users);
     });
 
     return () => {
       socket.off("messagesLoaded");
       socket.off("newMessage");
+      socket.off("activeUsers");
     };
   }, []);
 
@@ -78,8 +88,9 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen w-screen bg-gray-900 flex flex-col p-6">
-      <div className="flex justify-between">
-        {/* User Profile Box with Edit Button */}
+      {/* Top Bar */}
+      <div className="flex justify-between items-center">
+        {/* User Profile Box (Left Side) */}
         <div className="bg-gray-800 text-white p-4 rounded-lg shadow-md w-64 flex flex-col">
           <div className="text-lg font-bold flex justify-between items-center">
             {user ? user.name : "Loading..."}
@@ -90,14 +101,33 @@ export default function Dashboard() {
           <p className="text-gray-400">{user ? user.email : "Loading..."}</p>
         </div>
 
-        {/* Logout Button (Top Right) */}
+        {/* Spacer - Pushes Active Users & Logout Button to Right */}
+        <div className="flex-grow"></div>
+
+        {/* Active Users Box (Now Positioned Right Before Logout Button) */}
+        <div className="bg-gray-800 text-white p-4 rounded-lg shadow-md w-64 flex flex-col mr-4">
+          <h3 className="text-lg font-bold">Active Users</h3>
+          <div className="mt-2 bg-gray-700 p-2 rounded-md overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ maxHeight: "40px" }}>
+            {activeUsers.length > 0 ? (
+              activeUsers.map((username, index) => (
+                <div key={index} className="text-gray-300 p-1">
+                  {username}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500">No users online</p>
+            )}
+          </div>
+        </div>
+
+        {/* Logout Button (Far Right) */}
         <button onClick={handleLogout} className="text-white hover:text-red-500 transition">
           <FontAwesomeIcon icon={faRightFromBracket} size="2x" />
         </button>
       </div>
 
       {/* Chat Box */}
-      <div className="flex flex-col flex-grow bg-gray-800 mt-4 p-4 rounded-lg overflow-y-auto scrollbar-hide" style={{ maxHeight: "70vh" }}>
+      <div className="flex flex-col flex-grow bg-gray-800 mt-4 p-4 rounded-lg overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ maxHeight: "70vh" }}>
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -108,7 +138,7 @@ export default function Dashboard() {
             <strong>{msg.user_id === user?.id ? "You" : `User ${msg.user_id}`}:</strong> {msg.content}
           </div>
         ))}
-        <div ref={messagesEndRef} /> {/* This div helps auto-scroll */}
+        <div ref={messagesEndRef} /> {/* Auto-Scroll Ref */}
       </div>
 
       {/* Message Input */}
