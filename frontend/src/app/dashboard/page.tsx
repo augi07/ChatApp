@@ -4,9 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket, faUserEdit } from "@fortawesome/free-solid-svg-icons";
-import { io } from "socket.io-client";
-
-const socket = io("http://localhost:4000");
+import { io, Socket } from "socket.io-client"; // Import Socket type
 
 export default function Dashboard() {
   const router = useRouter();
@@ -16,7 +14,23 @@ export default function Dashboard() {
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Store the socket instance in a useRef to persist across re-renders
+  const socketRef = useRef<Socket | null>(null);
+
   useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io("http://localhost:4000", {
+        transports: ["websocket"], // Enforce WebSockets for better performance
+        reconnection: true, // Allow automatic reconnection
+        reconnectionAttempts: 5, // Retry 5 times before failing
+        reconnectionDelay: 2000, // Wait 2 seconds before reconnecting
+      });
+    }
+
+    const socket = socketRef.current;
+
+    let isMounted = true; // Track if component is still mounted
+
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -35,11 +49,12 @@ export default function Dashboard() {
 
         if (!res.ok) throw new Error("Failed to fetch user");
         const data = await res.json();
-        setUser(data);
-        localStorage.setItem("user", JSON.stringify(data));
 
-        // Add user to active list
-        socket.emit("userConnected", data);
+        if (isMounted) {
+          setUser(data);
+          localStorage.setItem("user", JSON.stringify(data));
+          socket.emit("userConnected", data);
+        }
       } catch (error) {
         console.error("Error fetching user:", error);
       }
@@ -50,23 +65,33 @@ export default function Dashboard() {
     socket.emit("loadMessages");
 
     socket.on("messagesLoaded", (messages) => {
-      setMessages(messages);
-      setTimeout(scrollToBottom, 100);
+      if (isMounted) {
+        setMessages(messages);
+        setTimeout(scrollToBottom, 100);
+      }
     });
 
     socket.on("newMessage", (newMessage) => {
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
-      setTimeout(scrollToBottom, 100);
+      if (isMounted) {
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+        setTimeout(scrollToBottom, 100);
+      }
     });
 
     socket.on("activeUsers", (users) => {
-      setActiveUsers(users);
+      if (isMounted) setActiveUsers(users);
     });
 
     return () => {
-      socket.off("messagesLoaded");
-      socket.off("newMessage");
-      socket.off("activeUsers");
+      isMounted = false; // Prevent state updates after unmount
+
+      if (socketRef.current) {
+        socketRef.current.off("messagesLoaded");
+        socketRef.current.off("newMessage");
+        socketRef.current.off("activeUsers");
+        socketRef.current.disconnect(); // Properly disconnect socket
+        socketRef.current = null;
+      }
     };
   }, []);
 
@@ -78,7 +103,7 @@ export default function Dashboard() {
 
   const sendMessage = () => {
     if (!message.trim() || !user) return;
-    socket.emit("sendMessage", { user_id: user.id, content: message });
+    socketRef.current?.emit("sendMessage", { user_id: user.id, content: message });
     setMessage("");
   };
 
