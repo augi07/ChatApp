@@ -1,17 +1,17 @@
-# Hello this is my Chat-App Messinger
+# Hello this is my chat-app messinger
 
-To setup this Project:
+To setup this project:
 
-git glone ``https://github.com/augi07/ChatApp``
+git clone ``https://github.com/augi07/ChatApp``
 
-# get it installed
+# Get it installed
 
-In the Terminal give following command:
+In the terminal give following command:
 
 ``docker compose up --build -d``
 
-# Open the Web Chat App
+# Open the web-chat-app
 
-to Open the Chat App go to any Webbrowser and put:
+Go to any Webbrowser and type in the followning:
 
 ``http://localhost:3000``
